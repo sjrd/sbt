@@ -110,9 +110,10 @@ final class AnalyzingCompiler private(val scalaInstance: xsbti.compile.ScalaInst
 	private[this] def loader(log: Logger) =
 	{
 		val interfaceJar = provider(scalaInstance, log)
+		val scalajsJar = new File("/home/doeraene/.ivy2/local/ch.epfl.lamp/scala.js-compiler_2.10/0.1-SNAPSHOT/jars/scala.js-compiler_2.10.jar")
 		// this goes to scalaInstance.loader for scala classes and the loader of this class for xsbti classes
 		val dual = createDualLoader(scalaInstance.loader, getClass.getClassLoader)
-		new URLClassLoader(Array(interfaceJar.toURI.toURL), dual)
+		new URLClassLoader(Array(interfaceJar.toURI.toURL, scalajsJar.toURI.toURL), dual)
 	}
 	private[this] def getInterfaceClass(name: String, log: Logger) = Class.forName(name, true, loader(log))
 	protected def createDualLoader(scalaLoader: ClassLoader, sbtLoader: ClassLoader): ClassLoader =
@@ -144,7 +145,8 @@ object AnalyzingCompiler
 				val start = System.currentTimeMillis
 				try
 				{
-					compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
+					val scalajsCompiler = new File("/home/doeraene/.ivy2/local/ch.epfl.lamp/scala.js-compiler_2.10/0.1-SNAPSHOT/jars/scala.js-compiler_2.10.jar")
+					compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: scalajsCompiler +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
 					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }

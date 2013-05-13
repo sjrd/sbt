@@ -144,9 +144,9 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
 	val compiler: Compiler = {
 		if (command.settings.Yrangepos.value)
-			new Compiler() with RangePositions // unnecessary in 2.11
+			new Compiler() with scala.tools.nsc.scalajs.JSGlobal with RangePositions // unnecessary in 2.11
 		else
-			new Compiler()
+			new Compiler() with scala.tools.nsc.scalajs.JSGlobal
 	}
 	class Compiler extends CallbackGlobal(command.settings, dreporter, output)
 	{
