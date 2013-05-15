@@ -144,6 +144,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
 	val compiler: Compiler = {
 		val dynamicCompilerTrait = "scala.tools.nsc.scalajs.JSGlobal"
+		val dynamicCompilerJar = "/home/doeraene/.ivy2/local/ch.epfl.lamp/scala.js-compiler_2.10/0.1-SNAPSHOT/jars/scala.js-compiler_2.10.jar"
 
 		if (dynamicCompilerTrait.isEmpty) {
 			if (command.settings.Yrangepos.value)
@@ -154,7 +155,12 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 			import scala.reflect.runtime.universe._
 			import scala.tools.reflect.ToolBox
 
-			val cm = runtimeMirror(this.getClass.getClassLoader)
+			val classLoader0 = this.getClass.getClassLoader
+			val classLoader =
+				if (dynamicCompilerJar.isEmpty) classLoader0
+				else new java.net.URLClassLoader(Array(new File(dynamicCompilerJar).toURI.toURL), classLoader0)
+
+			val cm = runtimeMirror(classLoader)
 			val tb = cm.mkToolBox()
 
 			val thisTerm = build.newFreeTerm("thisCachedCompiler0", this)
