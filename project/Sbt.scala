@@ -248,7 +248,6 @@ object Sbt extends Build
 		exportedProducts in Compile := Nil,
 		exportedProducts in Test := Nil,
 		libraryDependencies <+= scalaVersion( "org.scala-lang" % "scala-compiler" % _ % "provided"),
-		libraryDependencies += "ch.epfl.lamp" % "scala.js-compiler_2.10" % "0.1-SNAPSHOT",
 		libraryDependencies += jlineDep artifacts(Artifact("jline", Map("e:component" -> srcID)))
 	)
 	//

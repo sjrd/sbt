@@ -143,10 +143,52 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 	}
 
 	val compiler: Compiler = {
-		if (command.settings.Yrangepos.value)
-			new Compiler() with scala.tools.nsc.scalajs.JSGlobal with RangePositions // unnecessary in 2.11
-		else
-			new Compiler() with scala.tools.nsc.scalajs.JSGlobal
+		val dynamicCompilerTrait = "scala.tools.nsc.scalajs.JSGlobal"
+
+		if (dynamicCompilerTrait.isEmpty) {
+			if (command.settings.Yrangepos.value)
+				new Compiler() with RangePositions // unnecessary in 2.11
+			else
+				new Compiler()
+		} else {
+			import scala.reflect.runtime.universe._
+			import scala.tools.reflect.ToolBox
+
+			val cm = runtimeMirror(this.getClass.getClassLoader)
+			val tb = cm.mkToolBox()
+
+			val thisTerm = build.newFreeTerm("thisCachedCompiler0", this)
+			build.setTypeSignature(thisTerm, typeOf[CachedCompiler0])
+
+			tb.eval {
+				val maybeRangePosParent =
+					if (command.settings.Yrangepos.value) List(TypeTree(typeOf[RangePositions]))
+					else Nil
+
+				val dynamicCompilerTraitType =
+					cm.staticClass(dynamicCompilerTrait).toTypeConstructor
+
+				val specializedCompilerParents = (
+					Select(Ident(newTermName("localThis")), newTypeName("Compiler")) ::
+					TypeTree(dynamicCompilerTraitType) ::
+					maybeRangePosParent)
+
+				val emptyConstructor =
+					DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
+					Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+
+				Block(List(
+					// val localThis = thisCachedCompiler0
+					ValDef(Modifiers(), newTermName("localThis"), TypeTree(), Ident(thisTerm)),
+					// class SpecializedCompiler extends localThis.Compiler with $dynamicCompilerTrait (with RangePositions)
+					ClassDef(Modifiers(Flag.FINAL), newTypeName("SpecializedCompiler"), List(), Template(
+						specializedCompilerParents,
+						emptyValDef,
+						List(emptyConstructor)))),
+					// new SpecializedCompiler
+					Apply(Select(New(Ident(newTypeName("SpecializedCompiler"))), nme.CONSTRUCTOR), List()))
+			}.asInstanceOf[Compiler]
+		}
 	}
 	class Compiler extends CallbackGlobal(command.settings, dreporter, output)
 	{

@@ -145,8 +145,7 @@ object AnalyzingCompiler
 				val start = System.currentTimeMillis
 				try
 				{
-					val scalajsCompiler = new File("/home/doeraene/.ivy2/local/ch.epfl.lamp/scala.js-compiler_2.10/0.1-SNAPSHOT/jars/scala.js-compiler_2.10.jar")
-					compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: scalajsCompiler +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
+					compiler(sourceFiles.toSeq, compiler.scalaInstance.libraryJar +: (xsbtiJars.toSeq ++ sourceJars), outputDirectory, "-nowarn" :: Nil)
 					log.info("  Compilation completed in " + (System.currentTimeMillis - start) / 1000.0 + " s")
 				}
 				catch { case e: xsbti.CompileFailed => throw new CompileFailed(e.arguments, "Error compiling sbt component '" + id + "'", e.problems) }
