@@ -143,8 +143,22 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 	}
 
 	val compiler: Compiler = {
-		val dynamicCompilerTrait = "scala.tools.nsc.scalajs.JSGlobal"
-		val dynamicCompilerJar = "/home/doeraene/.ivy2/local/ch.epfl.lamp/scala.js-compiler_2.10/0.1-SNAPSHOT/jars/scala.js-compiler_2.10.jar"
+		def getSettingsDefines(name: String): List[String] = {
+			val prefix = "-D"+name+"="
+			for {
+				define <- command.settings.defines.value
+				if define startsWith prefix
+			} yield {
+				define.substring(prefix.length)
+			}
+		}
+
+		def getSettingsDefine(name: String, default: String = ""): String = {
+			getSettingsDefines(name).headOption.getOrElse(default)
+		}
+
+		val dynamicCompilerTrait = getSettingsDefine("sbt.compile.interface.dynamiccompilertrait")
+		val dynamicCompilerJar = getSettingsDefine("sbt.compile.interface.dynamiccompilerjar")
 
 		if (dynamicCompilerTrait.isEmpty) {
 			if (command.settings.Yrangepos.value)
