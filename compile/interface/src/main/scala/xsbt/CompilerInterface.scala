@@ -144,10 +144,13 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
 	val compiler: Compiler = {
 		def getSettingsDefines(name: String): List[String] = {
+			implicit def compat28x(definePair: (String, String)): String =
+				"-D" + definePair._1 + "=" + definePair._2
+
 			val prefix = "-D"+name+"="
 			for {
 				define <- command.settings.defines.value
-				if define startsWith prefix
+				if define.substring(0, prefix.length) == prefix
 			} yield {
 				define.substring(prefix.length)
 			}
@@ -166,8 +169,14 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 			else
 				new Compiler()
 		} else {
-			import scala.reflect.runtime.universe._
-			import scala.tools.reflect.ToolBox
+			// Abuse import resolution order and precedence to be compatible with Scala < 2.10
+			import CompatReflectBefore210._
+			{
+			import scala.reflect._ // for runtime.universe
+			import scala.tools._   // for reflect.ToolBox
+			{
+			import runtime.universe._
+			import reflect._ // for ToolBox
 
 			val classLoader0 = this.getClass.getClassLoader
 			val classLoader =
@@ -208,6 +217,8 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 					// new SpecializedCompiler
 					Apply(Select(New(Ident(newTypeName("SpecializedCompiler"))), nme.CONSTRUCTOR), List()))
 			}.asInstanceOf[Compiler]
+			}
+			}
 		}
 	}
 	class Compiler extends CallbackGlobal(command.settings, dreporter, output)
@@ -301,5 +312,76 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 
 		private[this] var callback0: AnalysisCallback = null
 		def callback: AnalysisCallback = callback0
+	}
+}
+
+/** Impersonation of Scala Reflection for compatibility with Scala < 2.10.
+ *  This does not make it *work* before 2.10. It only makes sure that this file
+ *  can be compiled with earlier versions of Scala.
+ */
+private[xsbt] object CompatReflectBefore210 {
+	private def ??? : Nothing =
+		throw new Exception("Dynamic compiler trait mixin is only supported with Scala 2.10+")
+
+	object runtime {
+		object universe {
+			def runtimeMirror(classLoader: ClassLoader): Mirror = ???
+			def typeOf[T]: Any = ???
+
+			object build {
+				def newFreeTerm(name: String, value: Any): Any = ???
+				def setTypeSignature(sym: Any, tpe: Any): Unit = ???
+			}
+
+			class Mirror {
+				def mkToolBox(): ToolBox = ???
+				def staticClass(name: String): ClassSymbol = ???
+			}
+			class ClassSymbol {
+				def toTypeConstructor: Any = ???
+			}
+			class ToolBox {
+				def eval(tree: Any): Any = ???
+			}
+
+			def newTermName(name: String): Any = ???
+			def newTypeName(name: String): Any = ???
+
+			def TypeTree(tpe: Any): Any = ???
+			def TypeTree(): Any = ???
+			def Ident(sym: Any): Any = ???
+
+			def ValDef(mods: Any, name: Any, tpe: Any, rhs: Any): Any = ???
+			def DefDef(mods: Any, name: Any, tpt: List[Any], paramss: List[List[Any]], resultType: Any, body: Any): Any = ???
+			def ClassDef(mods: Any, name: Any, paramss: List[List[Any]], tpl: Any): Any = ???
+			def Template(parents: List[Any], self: Any, members: List[Any]): Any = ???
+
+			def Block(stats: List[Any], expr: Any): Any = ???
+			def Select(qual: Any, item: Any): Any = ???
+			def Apply(fun: Any, args: List[Any]): Any = ???
+			def This(cls: Any): Any = ???
+			def Super(obj: Any, mixin: Any): Any = ???
+			def Literal(c: Any): Any = ???
+			def Constant(value: Any): Any = ???
+			def New(tpe: Any): Any = ???
+
+			def Modifiers(): Any = ???
+			def Modifiers(flag: Any): Any = ???
+
+			def emptyValDef: Any = ???
+
+			object nme {
+				def CONSTRUCTOR: Any = ???
+			}
+			object tpnme {
+				def EMPTY: Any = ???
+			}
+			object Flag {
+				def FINAL: Any = ???
+			}
+		}
+	}
+
+	object reflect {
 	}
 }
