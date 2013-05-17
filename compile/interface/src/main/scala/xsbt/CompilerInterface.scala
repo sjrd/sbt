@@ -64,7 +64,7 @@ private final class WeakLog(private[this] var log: Logger, private[this] var del
 	}
 }
 
-private final class CachedCompiler0(args: Array[String], output: Output, initialLog: WeakLog, resident: Boolean) extends CachedCompiler
+final class CachedCompiler0(args: Array[String], output: Output, initialLog: WeakLog, resident: Boolean) extends CachedCompiler
 {
 	val settings = new Settings(s => initialLog(s))
 	output match {
@@ -186,37 +186,14 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
 			val cm = runtimeMirror(classLoader)
 			val tb = cm.mkToolBox()
 
-			val thisTerm = build.newFreeTerm("thisCachedCompiler0", this)
-			build.setTypeSignature(thisTerm, typeOf[CachedCompiler0])
+			val source = (
+				"(cc: xsbt.CachedCompiler0) => new cc.Compiler with " +
+				dynamicCompilerTrait +
+				(if (command.settings.Yrangepos.value) " with scala.tools.nsc.interactive.RangePositions" else "")
+			)
+			val f = tb.eval(tb.parse(source)).asInstanceOf[CachedCompiler0 => Any]
+			f(this).asInstanceOf[Compiler]
 
-			tb.eval {
-				val maybeRangePosParent =
-					if (command.settings.Yrangepos.value) List(TypeTree(typeOf[RangePositions]))
-					else Nil
-
-				val dynamicCompilerTraitType =
-					cm.staticClass(dynamicCompilerTrait).toTypeConstructor
-
-				val specializedCompilerParents = (
-					Select(Ident(newTermName("localThis")), newTypeName("Compiler")) ::
-					TypeTree(dynamicCompilerTraitType) ::
-					maybeRangePosParent)
-
-				val emptyConstructor =
-					DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(),
-					Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
-
-				Block(List(
-					// val localThis = thisCachedCompiler0
-					ValDef(Modifiers(), newTermName("localThis"), TypeTree(), Ident(thisTerm)),
-					// class SpecializedCompiler extends localThis.Compiler with $dynamicCompilerTrait (with RangePositions)
-					ClassDef(Modifiers(Flag.FINAL), newTypeName("SpecializedCompiler"), List(), Template(
-						specializedCompilerParents,
-						emptyValDef,
-						List(emptyConstructor)))),
-					// new SpecializedCompiler
-					Apply(Select(New(Ident(newTypeName("SpecializedCompiler"))), nme.CONSTRUCTOR), List()))
-			}.asInstanceOf[Compiler]
 			}
 			}
 		}
@@ -326,58 +303,13 @@ private[xsbt] object CompatReflectBefore210 {
 	object runtime {
 		object universe {
 			def runtimeMirror(classLoader: ClassLoader): Mirror = ???
-			def typeOf[T]: Any = ???
-
-			object build {
-				def newFreeTerm(name: String, value: Any): Any = ???
-				def setTypeSignature(sym: Any, tpe: Any): Unit = ???
-			}
 
 			class Mirror {
 				def mkToolBox(): ToolBox = ???
-				def staticClass(name: String): ClassSymbol = ???
-			}
-			class ClassSymbol {
-				def toTypeConstructor: Any = ???
 			}
 			class ToolBox {
+				def parse(source: String): Any = ???
 				def eval(tree: Any): Any = ???
-			}
-
-			def newTermName(name: String): Any = ???
-			def newTypeName(name: String): Any = ???
-
-			def TypeTree(tpe: Any): Any = ???
-			def TypeTree(): Any = ???
-			def Ident(sym: Any): Any = ???
-
-			def ValDef(mods: Any, name: Any, tpe: Any, rhs: Any): Any = ???
-			def DefDef(mods: Any, name: Any, tpt: List[Any], paramss: List[List[Any]], resultType: Any, body: Any): Any = ???
-			def ClassDef(mods: Any, name: Any, paramss: List[List[Any]], tpl: Any): Any = ???
-			def Template(parents: List[Any], self: Any, members: List[Any]): Any = ???
-
-			def Block(stats: List[Any], expr: Any): Any = ???
-			def Select(qual: Any, item: Any): Any = ???
-			def Apply(fun: Any, args: List[Any]): Any = ???
-			def This(cls: Any): Any = ???
-			def Super(obj: Any, mixin: Any): Any = ???
-			def Literal(c: Any): Any = ???
-			def Constant(value: Any): Any = ???
-			def New(tpe: Any): Any = ???
-
-			def Modifiers(): Any = ???
-			def Modifiers(flag: Any): Any = ???
-
-			def emptyValDef: Any = ???
-
-			object nme {
-				def CONSTRUCTOR: Any = ???
-			}
-			object tpnme {
-				def EMPTY: Any = ???
-			}
-			object Flag {
-				def FINAL: Any = ???
 			}
 		}
 	}
